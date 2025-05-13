@@ -3,63 +3,63 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"net"
-	// "os"
 	"math/rand"
+	"net"
+	"strconv"
+	"strings"
 	"time"
 )
 
 func main() {
-	port := 6000
+	mainPort := 6000
+	gameNumber := rand.Intn(20)
+	fmt.Printf("Game number: %d\n", gameNumber)
 
-	// fmt.Println(newPort(time.Now().UnixNano()))
-
-	conn := createConnection(port)
-
+	conn := createConnection(mainPort)
 
 	buffer := make([]byte, 1024)
-	fmt.Println("Servidor adivina escuchando UDP en el puerto", port)
+	fmt.Println("Server listening to UDP mainPort: ", mainPort)
 
 	for {
 		n, remoteAddr, err := conn.ReadFromUDP(buffer)
 		if err != nil {
-			fmt.Println("Error leyendo:", err)
+			fmt.Println("Error reading from middle server response:", err)
 			continue
 		}
 
 		numero := string(buffer[:n])
-		fmt.Printf("Recibido: %s desde %s\n", numero, remoteAddr)
+		// remove trash trailing
+		cleanNumber := strings.TrimSpace(numero)
+		fmt.Printf("Recibido: %s desde %s\n", cleanNumber, remoteAddr)
 
-		newPort := newPort(time.Now().UnixNano())
+		num, err := strconv.Atoi(cleanNumber)
+		if err != nil {
+			fmt.Println("Error converting string to number.", err)
+			return
+		}
 
-		// Crear JSON con valor entero
-		data := map[string]interface{}{
-			"message": "ping",
-			"newPort": newPort,
+		newPort := generateRandomPort(time.Now().UTC().UnixNano())
+
+		// TODO status should tell if the server is shutting down or working, for this we need more info from python
+		data := map[string]string{
+			"message": checkNumber(gameNumber, num),
+			"address": conn.LocalAddr().String(),
+			"port":    strconv.Itoa(newPort),
+			"status":  "working",
 		}
 		jsonData, _ := json.Marshal(data)
 
+		_, err = conn.WriteToUDP(jsonData, remoteAddr)
+
 		conn.Close()
-		conn := createConnection(newPort)
-		_, err = conn.WriteToUDP([]byte(jsonData), remoteAddr)
-		// if err == nil {
-		// 	fmt.Println("Servidor cierra la conexión")
-		// 	conn.Close()
-		// }
+		conn = createConnection(newPort)
+		fmt.Println("Server is now listening at UDP: ", newPort)
 	}
 }
 
-func atoiOrFallback(str string, fallback int) int {
-	n, err := fmt.Sscanf(str, "%d", &fallback)
-	if err != nil || n != 1 {
-		return fallback
-	}
-	return fallback
-}
-
-func newPort(seed int64) int {
+func generateRandomPort(seed int64) int {
 	rand.Seed(seed)
-	return (rand.Intn(65535-8000+1) + 8000)
+	return rand.Intn(65535-8000+1) + 8000
 }
 
 func createConnection(port int) *net.UDPConn {
@@ -72,4 +72,14 @@ func createConnection(port int) *net.UDPConn {
 		panic(err)
 	}
 	return conn
+}
+
+func checkNumber(gameNumber int, number int) string {
+	if number > gameNumber {
+		return "bigger"
+	} else if number == gameNumber {
+		return "same"
+	} else {
+		return "smaller"
+	}
 }
