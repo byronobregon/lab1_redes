@@ -31,9 +31,9 @@ def main():
         while True:
             conn, addr = tcp_sock.accept()
             with conn:
-                numero = conn.recv(1024).decode()
+                number = conn.recv(1024).decode()
                 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_sock:
-                    udp_sock.sendto(numero.encode(), (UDP_FINAL_HOST, UDP_FINAL_PORT))
+                    udp_sock.sendto(number.encode(), (UDP_FINAL_HOST, UDP_FINAL_PORT))
                     response, _ = udp_sock.recvfrom(1024)
                     json_response = json.loads(response.decode('utf-8'))
                     # TODO refactor this
@@ -59,8 +59,10 @@ def main():
                         "message": number_response(json_response.get("message")),
                         "attempts": attempts_count
                     }
+                    print(number)
                     conn.sendall(json.dumps(client_message).encode('utf-8'))
-                    attempts_count -= 1
+                    if number != "1000": # TODO check with client request game condition
+                        attempts_count -= 1
 
 
 if __name__ == "__main__":
