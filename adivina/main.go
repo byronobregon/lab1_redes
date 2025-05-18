@@ -5,20 +5,21 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func main() {
 	mainPort := 6000
-	gameNumber := rand.Intn(20)
-	fmt.Printf("Game number: %d\n", gameNumber)
-
 	conn := createConnection(mainPort)
+	defer conn.Close()
+
+	fmt.Println("Server listening to UDP: ", mainPort)
 
 	buffer := make([]byte, 1024)
-	fmt.Println("Server listening to UDP mainPort: ", mainPort)
+	var gameNumber int
+	var gameActive bool = false
 
 	for {
 		n, remoteAddr, err := conn.ReadFromUDP(buffer)
@@ -27,9 +28,79 @@ func main() {
 			continue
 		}
 
-		numero := string(buffer[:n])
+		var message map[string]string
+		err = json.Unmarshal(buffer[:n], &message)
+		if err != nil {
+			fmt.Println("Error parsing JSON:", err)
+			continue
+		}
+
+		if action, exists := message["action"]; exists && action == "stop" {
+
+			response := map[string]string{
+				"message": "Game stoped.",
+				"status":  "closing",
+			}
+
+			jsonResponse, _ := json.Marshal(response)
+			_, err = conn.WriteToUDP(jsonResponse, remoteAddr)
+			if err != nil {
+				fmt.Println("Error sending response:", err)
+				continue
+			}
+
+			conn.Close()
+			fmt.Println("Server is closing.")
+			os.Exit(0)
+		}
+
+		if action, exists := message["action"]; exists && action == "start" {
+			if gameActive == true {
+				response := map[string]string{
+					"message": "Game currently active.",
+					"status":  "busy",
+				}
+
+				jsonResponse, _ := json.Marshal(response)
+				_, err = conn.WriteToUDP(jsonResponse, remoteAddr)
+				if err != nil {
+					fmt.Println("Error sending response:", err)
+					continue
+				}
+			} else {
+				//newPort := generateRandomPort(time.Now().UTC().UnixNano())
+				newPort := 6000
+				gameNumber = rand.Intn(20)
+				gameActive = true
+				fmt.Printf("New game started. number: %d\n", gameNumber)
+
+				response := map[string]string{
+					"message": "Game started.",
+					"port":    strconv.Itoa(newPort),
+					"status":  "playing",
+				}
+
+				jsonResponse, _ := json.Marshal(response)
+				_, err = conn.WriteToUDP(jsonResponse, remoteAddr)
+				if err != nil {
+					fmt.Println("Error sending response:", err)
+					continue
+				}
+
+				conn.Close()
+				conn = createConnection(newPort)
+				fmt.Println("Server is now listening at UDP port:", newPort)
+				continue
+			}
+		}
+
+		number, exists := message["number"]
+		if !exists {
+			fmt.Println("No number field in message")
+			continue
+		}
 		// remove trash trailing
-		cleanNumber := strings.TrimSpace(numero)
+		cleanNumber := strings.TrimSpace(number)
 		fmt.Printf("Recibido: %s desde %s\n", cleanNumber, remoteAddr)
 
 		num, err := strconv.Atoi(cleanNumber)
@@ -38,14 +109,20 @@ func main() {
 			return
 		}
 
-		newPort := generateRandomPort(time.Now().UTC().UnixNano())
+		//newPort := generateRandomPort(time.Now().UTC().UnixNano())
+		newPort := 6000
+		result := checkNumber(gameNumber, num)
 
-		// TODO status should tell if the server is shutting down or working, for this we need more info from python
+		status := "playing"
+		if result == "same" {
+			status = "won"
+		}
+
 		data := map[string]string{
-			"message": checkNumber(gameNumber, num),
+			"message": result,
 			"address": conn.LocalAddr().String(),
 			"port":    strconv.Itoa(newPort),
-			"status":  "working",
+			"status":  status,
 		}
 		jsonData, _ := json.Marshal(data)
 
@@ -76,10 +153,10 @@ func createConnection(port int) *net.UDPConn {
 
 func checkNumber(gameNumber int, number int) string {
 	if number > gameNumber {
-		return "bigger"
+		return "smaller"
 	} else if number == gameNumber {
 		return "same"
 	} else {
-		return "smaller"
+		return "bigger"
 	}
 }

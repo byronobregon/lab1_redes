@@ -1,6 +1,7 @@
 import socket
 import os
 import json
+import sys
 
 TCP_HOST = '0.0.0.0'
 TCP_PORT = int(os.getenv("TCP_PORT", 3000))
@@ -31,38 +32,59 @@ def main():
         while True:
             conn, addr = tcp_sock.accept()
             with conn:
-                number = conn.recv(1024).decode()
+                data = conn.recv(1024).decode()
+                request = json.loads(data)
+                number = request.get("number")
                 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_sock:
-                    udp_sock.sendto(number.encode(), (UDP_FINAL_HOST, UDP_FINAL_PORT))
-                    response, _ = udp_sock.recvfrom(1024)
-                    json_response = json.loads(response.decode('utf-8'))
-                    # TODO refactor this
-                    UDP_FINAL_PORT = int(json_response.get("port"))
-                    print(json_response)
-                    if attempts_count <= 0:
-                        conn.sendall(b"No trys left")
-                        # TODO it should await from client message to close
-                        # after that it should tell the server to close the process
-                        # then it should receive an ok from the server, and
-                        # send a message to the client
-                        # after that it should close the process
-                        break
-                    elif number_response(json_response.get("message")) == "¡Has acertado!":
-                        conn.sendall(b"You won!")
-                        # TODO it should await from client message to close
-                        # after that it should tell the server to close the process
-                        # then it should receive an ok from the server, and
-                        # send a message to the client
-                        # after that it should close the process
-                        break
-                    client_message = {
-                        "message": number_response(json_response.get("message")),
-                        "attempts": attempts_count
+                    start_request = {
+                        "action": "start"
                     }
-                    print(number)
-                    conn.sendall(json.dumps(client_message).encode('utf-8'))
-                    if number != "1000": # TODO check with client request game condition
-                        attempts_count -= 1
+                    if request.get("action") == "start":
+                        udp_sock.sendto(json.dumps(start_request).encode('utf-8'),
+                                        (UDP_FINAL_HOST, UDP_FINAL_PORT))
+                    elif request.get("action") == "guess":
+                        guess_request = {
+                            "action": "guess",
+                            "number": number
+                        }
+                        udp_sock.sendto(json.dumps(guess_request).encode('utf-8'),
+                                        (UDP_FINAL_HOST, UDP_FINAL_PORT))
+                    elif request.get("action") == "stop":
+                        guess_request = {
+                            "action": "stop",
+                        }
+                        udp_sock.sendto(json.dumps(guess_request).encode('utf-8'),
+                                        (UDP_FINAL_HOST, UDP_FINAL_PORT))
+
+                    udp_response, _ = udp_sock.recvfrom(1024)
+                    json_response = json.loads(udp_response.decode('utf-8'))
+                    if json_response.get("status") == "playing":
+                        response = {
+                            "action": "OK",
+                            "attempts": attempts_count,
+                            "message": number_response(json_response.get("message")),
+                            "status": "playing"
+                        }
+                        print(json_response)
+                        conn.sendall(json.dumps(response).encode('utf-8'))
+                    elif json_response.get("status") == "won":
+                        response = {
+                            "action": "OK",
+                            "attempts": attempts_count,
+                            "message": number_response(json_response.get("message")),
+                            "status": "won"
+                        }
+                        print(json_response)
+                        conn.sendall(json.dumps(response).encode('utf-8'))
+                    elif json_response.get("status") == "closing":
+                        response = {
+                            "action": "OK",
+                            "status": "closing"
+                        }
+                        print(json_response)
+                        print("Middle server closing.")
+                        conn.sendall(json.dumps(response).encode('utf-8'))
+                        sys.exit()
 
 
 if __name__ == "__main__":
