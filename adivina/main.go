@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -87,8 +88,8 @@ func main() {
 					continue
 				}
 			} else {
-				//newPort := generateRandomPort(time.Now().UTC().UnixNano())
-				newPort := 6000
+				newPort := generateRandomPort(time.Now().UTC().UnixNano())
+				//newPort := 6000
 				gameNumber = rand.Intn(20)
 				gameActive = true
 				fmt.Printf("New game started. number: %d\n", gameNumber)
@@ -128,8 +129,8 @@ func main() {
 			return
 		}
 
-		//newPort := generateRandomPort(time.Now().UTC().UnixNano())
-		newPort := 6000
+		newPort := generateRandomPort(time.Now().UTC().UnixNano())
+		//newPort := 6000
 		result := checkNumber(gameNumber, num)
 
 		status := "playing"

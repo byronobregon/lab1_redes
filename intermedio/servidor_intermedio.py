@@ -61,8 +61,14 @@ def main():
                     json_response = send_udp_request(udp_sock, udp_request, UDP_FINAL_PORT)
                     json_status = json_response.get("status")
                     print(json_response)
+                    if json_response.get("port"):
+                        UDP_FINAL_PORT = int(json_response.get("port"))
 
-                    if attempts_count <= 0:
+                    if json_status == "closing":
+                        response = {"action": "OK", "status": "closing"}
+                        conn.sendall(json.dumps(response).encode('utf-8'))
+                        sys.exit()
+                    elif attempts_count <= 0:
                         message = "No attempts left"
                         response = create_tcp_response(attempts_count, message, "no_attempts")
                         udp_request = {"action": "reset"}
@@ -70,10 +76,6 @@ def main():
                     elif json_status in ["playing", "won"]:
                         message = number_response(json_response.get("message"))
                         response = create_tcp_response(attempts_count, message, json_status)
-                    elif json_status == "closing":
-                        response = {"action": "OK", "status": "closing"}
-                        conn.sendall(json.dumps(response).encode('utf-8'))
-                        sys.exit()
                     conn.sendall(json.dumps(response).encode('utf-8'))
 
 
