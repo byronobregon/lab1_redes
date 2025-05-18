@@ -21,11 +21,13 @@ def start_game():
     }
 
     response = send_message(request)
+    print(response)
     # TODO: This message should be "OK" or "Error" #############################
     print("Conectado al servidor: ", response["action"])
     ############################################################################
-    if response.get("action") == "NO":
-        print("NO")
+    if response.get("status") == "busy":
+        print("Servidor Ocupado.")
+        return
     play(response["attempts"])
 
 
@@ -46,17 +48,21 @@ def play(attempts):
     response = send_message(request)
     print("Respuesta: ", response["message"])
 
-    if response.get("status") == "won":
-        play_response = input(f"¿Desea jugar de nuevo? (s/n)\n").lower()
-        if play_response == "s":
-            request = {
-                "action": "start"
-            }
-            response = send_message(request)
-            play(response["attempts"])
-        elif play_response == "n":
-            request_stop = {"action": "stop"}
-            send_message(request_stop)
+    if response.get("status") == "won" or response.get("status") == "lost":
+        # play_response = input(f"¿Desea jugar de nuevo? (s/n)\n").lower()
+        # if play_response == "s":
+        #     request = {
+        #         "action": "start"
+        #     }
+        #     response = send_message(request)
+        #     play(response["attempts"])
+        # elif play_response == "n":
+        #     request_stop = {"action": "stop"}
+        #     send_message(request_stop)
+        request_stop = {"action": "stop"}
+        send_message(request_stop)
+        print("CLOSING")
+        sys.exit()
     elif response.get("status") == "closing":
         print("CLOSING")
         sys.exit()

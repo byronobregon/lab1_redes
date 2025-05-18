@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -56,8 +57,8 @@ func main() {
 			} else {
 
 				// Generar un nuevo puerto aleatorio para el juego
-				//newPort := generateRandomPort(time.Now().UTC().UnixNano())
-				newPort := mainPort // TODO: no olvidar eliminar
+				newPort := generateRandomPort(time.Now().UTC().UnixNano())
+				// newPort := mainPort // TODO: no olvidar eliminar
 
 				gameNumber = rand.Intn(20)
 				gameActive = true
@@ -65,9 +66,9 @@ func main() {
 
 				sendMessage("Game started.", "playing", newPort, conn, remoteAddr)
 
-				// conn.Close()
-				// conn = createConnection(newPort)
-				// fmt.Println("Server is now listening at UDP port:", newPort)
+				conn.Close()
+				conn = createConnection(newPort)
+				fmt.Println("Server is now listening at UDP port:", newPort)
 				continue
 			}
 		}
@@ -82,8 +83,8 @@ func main() {
 		cleanNumber := strings.TrimSpace(number)
 		fmt.Printf("Recibido: %s desde %s\n", cleanNumber, remoteAddr)
 
-		//newPort := generateRandomPort(time.Now().UTC().UnixNano())
-		newPort := 6000
+		newPort := generateRandomPort(time.Now().UTC().UnixNano())
+		// newPort := 6000
 		status := "playing"
 
 		num, err := strconv.Atoi(cleanNumber)

@@ -8,9 +8,6 @@ TCP_PORT = int(os.getenv("TCP_PORT", 3000))
 
 UDP_FINAL_HOST = os.getenv("FINAL_SERVER_HOST", "localhost")
 
-
-# UDP_FINAL_PORT = int(os.getenv("FINAL_SERVER_PORT", 6000))
-
 def number_response(str):
     if str == "bigger":
         return "El número es mayor"
@@ -60,15 +57,24 @@ def main():
 
                     udp_response, _ = udp_sock.recvfrom(1024)
                     json_response = json.loads(udp_response.decode('utf-8'))
+                    UDP_FINAL_PORT = int(json_response.get("port"))
+                    print(json_response)
                     if json_response.get("status") == "playing":
                         attempts_count -= 1
-                        response = {
-                            "action": "OK",
-                            "attempts": attempts_count,
-                            "message": number_response(json_response.get("message")),
-                            "status": "playing"
-                        }
-                        print(json_response)
+                        if attempts_count == 0:
+                            response = {
+                                "action": "OK",
+                                "attempts": attempts_count,
+                                "message": "¡Has perdido!",
+                                "status": "lost"
+                            }
+                        else:
+                            response = {
+                                "action": "OK",
+                                "attempts": attempts_count,
+                                "message": number_response(json_response.get("message")),
+                                "status": "playing"
+                            }
                         conn.sendall(json.dumps(response).encode('utf-8'))
                     elif json_response.get("status") == "won":
                         response = {
@@ -77,14 +83,19 @@ def main():
                             "message": number_response(json_response.get("message")),
                             "status": "won"
                         }
-                        print(json_response)
+                        conn.sendall(json.dumps(response).encode('utf-8'))
+                    elif json_response.get("status") == "busy":
+                        response = {
+                            "action": "OK",
+                            "message": number_response(json_response.get("message")),
+                            "status": "busy"
+                        }
                         conn.sendall(json.dumps(response).encode('utf-8'))
                     elif json_response.get("status") == "closing":
                         response = {
                             "action": "OK",
                             "status": "closing"
                         }
-                        print(json_response)
                         print("Middle server closing.")
                         conn.sendall(json.dumps(response).encode('utf-8'))
                         sys.exit()
