@@ -16,6 +16,8 @@ def number_response(str):
         return "El número es mayor"
     elif str == "smaller":
         return "El número es menor"
+    elif str == "Error al convertir texto a número.":
+        return "Favor ingresar un número del 1 al 100"
     else:
         return "¡Has acertado!"
 
@@ -23,7 +25,7 @@ def number_response(str):
 def main():
     # TODO Refactor this
     UDP_FINAL_PORT = 6000
-    attempts_count = 7
+    attempts_count = 8
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as tcp_sock:
         tcp_sock.bind((TCP_HOST, TCP_PORT))
         tcp_sock.listen()
@@ -59,6 +61,7 @@ def main():
                     udp_response, _ = udp_sock.recvfrom(1024)
                     json_response = json.loads(udp_response.decode('utf-8'))
                     if json_response.get("status") == "playing":
+                        attempts_count -= 1
                         response = {
                             "action": "OK",
                             "attempts": attempts_count,
