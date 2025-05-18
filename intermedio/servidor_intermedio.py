@@ -18,6 +18,15 @@ def number_response(str):
     else:
         return "¡Has acertado!"
 
+def send_request_to_server(attempts, message, status, conn):
+    response = {
+        "action": "OK",
+        "attempts": attempts,
+        "message": message,
+        "status": status
+    }
+    conn.sendall(json.dumps(response).encode('utf-8'))
+
 
 def main():
     # TODO Refactor this
@@ -59,45 +68,16 @@ def main():
                     json_response = json.loads(udp_response.decode('utf-8'))
                     UDP_FINAL_PORT = int(json_response.get("port"))
                     print(json_response)
+                    message = number_response(json_response.get("message"))
+                    status = json_response.get("status")
                     if json_response.get("status") == "playing":
                         attempts_count -= 1
                         if attempts_count == 0:
-                            response = {
-                                "action": "OK",
-                                "attempts": attempts_count,
-                                "message": "¡Has perdido!",
-                                "status": "lost"
-                            }
-                        else:
-                            response = {
-                                "action": "OK",
-                                "attempts": attempts_count,
-                                "message": number_response(json_response.get("message")),
-                                "status": "playing"
-                            }
-                        conn.sendall(json.dumps(response).encode('utf-8'))
-                    elif json_response.get("status") == "won":
-                        response = {
-                            "action": "OK",
-                            "attempts": attempts_count,
-                            "message": number_response(json_response.get("message")),
-                            "status": "won"
-                        }
-                        conn.sendall(json.dumps(response).encode('utf-8'))
-                    elif json_response.get("status") == "busy":
-                        response = {
-                            "action": "OK",
-                            "message": number_response(json_response.get("message")),
-                            "status": "busy"
-                        }
-                        conn.sendall(json.dumps(response).encode('utf-8'))
-                    elif json_response.get("status") == "closing":
-                        response = {
-                            "action": "OK",
-                            "status": "closing"
-                        }
+                            message = "¡Has perdido!"
+                            status = "lost"
+                    send_request_to_server(attempts_count, message, status, conn)
+                    if status == "closing":
                         print("Middle server closing.")
-                        conn.sendall(json.dumps(response).encode('utf-8'))
                         sys.exit()
 
 

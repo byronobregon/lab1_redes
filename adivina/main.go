@@ -60,7 +60,7 @@ func main() {
 				newPort := generateRandomPort(time.Now().UTC().UnixNano())
 				// newPort := mainPort // TODO: no olvidar eliminar
 
-				gameNumber = rand.Intn(20)
+				gameNumber = rand.Intn(100)
 				gameActive = true
 				fmt.Printf("New game started. number: %d\n", gameNumber)
 
